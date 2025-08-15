@@ -1,0 +1,445 @@
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Romantic Text - Aku Sayang Kamu Selamanya</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4d6d;
+            font-size: 18px;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff4d6d;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0.8;
+            z-index: 1000;
+        }
+
+        .heart-particle {
+            position: absolute;
+            color: #ff4d6d;
+            font-size: 20px;
+            animation: float 4s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 500;
+        }
+
+        .floating-text {
+            position: absolute;
+            color: #ff69b4;
+            font-size: 16px;
+            font-family: 'Arial', cursive;
+            animation: floatText 6s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 400;
+            text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 0.3;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes floatText {
+            0%, 100% {
+                transform: translateY(0px) translateX(0px);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            50% {
+                transform: translateY(-30px) translateX(20px);
+                opacity: 1;
+            }
+            90% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1.0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #instructions {
+                font-size: 12px;
+                bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">Loading romantic scene...</div>
+        <div id="instructions">
+            <div>Desktop: Click and drag to rotate • Scroll to zoom</div>
+            <div>Mobile: Swipe to rotate • Pinch to zoom</div>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Font Loader CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <!-- Text Geometry CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+
+    <script>
+        // Scene setup
+        let scene, camera, renderer, textMesh, controls;
+        let heartParticles = [];
+
+        // Initialize the 3D scene
+        function init() {
+            try {
+                // Create scene
+                scene = new THREE.Scene();
+
+                // Create camera with optimized settings for PC
+                camera = new THREE.PerspectiveCamera(
+                    60, // Reduced FOV for better PC performance
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                camera.position.set(0, 0, 120); // Adjusted distance
+
+                // Create renderer with PC-optimized settings
+                renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    alpha: true,
+                    powerPreference: "high-performance"
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000, 1);
+                renderer.shadowMap.enabled = false; // Disabled for PC performance
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit for PC
+                
+                document.getElementById('container').appendChild(renderer.domElement);
+
+                // Add OrbitControls with PC-optimized settings
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.enableZoom = true;
+                controls.enablePan = false;
+                controls.minDistance = 50;
+                controls.maxDistance = 300;
+
+                // Add lighting
+                setupLighting();
+
+                // Create simple text immediately for PC
+                createSimpleText();
+
+                // Create floating heart particles
+                createHeartParticles();
+                
+                // Create floating romantic texts
+                createFloatingText();
+
+                // Start animation loop
+                animate();
+
+                // Hide loading text immediately
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                createSimpleText();
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function setupLighting() {
+            // Ambient light for overall illumination
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene.add(ambientLight);
+
+            // Main directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 50, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Pink point lights for romantic glow
+            const pinkLight1 = new THREE.PointLight(0xff4d6d, 1, 100);
+            pinkLight1.position.set(-30, 20, 30);
+            scene.add(pinkLight1);
+
+            const pinkLight2 = new THREE.PointLight(0xff69b4, 0.8, 100);
+            pinkLight2.position.set(30, -20, 30);
+            scene.add(pinkLight2);
+
+            // Rim light for dramatic effect
+            const rimLight = new THREE.DirectionalLight(0xff1744, 0.5);
+            rimLight.position.set(0, 0, -50);
+            scene.add(rimLight);
+        }
+
+        function loadFontAndCreateText() {
+            const loader = new THREE.FontLoader();
+            
+            // Use a web font URL for better compatibility
+            const fontUrl = 'https://threejs.org/examples/fonts/helvetiker_bold.typeface.json';
+            
+            loader.load(fontUrl, function(font) {
+                createText(font);
+                // Ensure loading screen is hidden after successful font load
+                document.getElementById('loading').style.display = 'none';
+            }, function(progress) {
+                console.log('Font loading progress:', progress);
+            }, function(error) {
+                console.error('Font loading error:', error);
+                // Fallback: create text with basic geometry
+                createFallbackText();
+                // Ensure loading screen is hidden even on error
+                document.getElementById('loading').style.display = 'none';
+            });
+            
+            // Fallback timeout: hide loading after 5 seconds regardless
+            setTimeout(() => {
+                if (document.getElementById('loading').style.display !== 'none') {
+                    console.log('Font loading timeout - using fallback');
+                    createFallbackText();
+                    document.getElementById('loading').style.display = 'none';
+                }
+            }, 5000);
+        }
+
+        function createText(font) {
+            const textGeometry = new THREE.TextGeometry('Aku sayang kamu\nselamanya', {
+                font: font,
+                size: 8,
+                height: 3,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.5,
+                bevelSize: 0.3,
+                bevelOffset: 0,
+                bevelSegments: 8
+            });
+
+            // Center the geometry
+            textGeometry.computeBoundingBox();
+            const centerOffsetX = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+            const centerOffsetY = -0.5 * (textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y);
+            const centerOffsetZ = -0.5 * (textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z);
+            textGeometry.translate(centerOffsetX, centerOffsetY, centerOffsetZ);
+
+            // Create gradient-like material
+            const textMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff4d6d,
+                shininess: 100,
+                specular: 0xff69b4,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh.castShadow = true;
+            textMesh.receiveShadow = true;
+
+            scene.add(textMesh);
+
+            // Add a subtle glow effect
+            const glowGeometry = textGeometry.clone();
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff4d6d,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.BackSide
+            });
+            const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+            glowMesh.scale.multiplyScalar(1.1);
+            scene.add(glowMesh);
+        }
+
+        function createFallbackText() {
+            // Fallback if font loading fails
+            const textGeometry = new THREE.BoxGeometry(40, 10, 5);
+            const textMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff4d6d,
+                shininess: 100
+            });
+            textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            scene.add(textMesh);
+            
+            console.log('Using fallback geometry due to font loading error');
+        }
+
+        function createHeartParticles() {
+            // Create floating CSS heart particles
+            for (let i = 0; i < 10; i++) {
+                const heart = document.createElement('div');
+                heart.innerHTML = '♥';
+                heart.className = 'heart-particle';
+                heart.style.left = Math.random() * window.innerWidth + 'px';
+                heart.style.top = Math.random() * window.innerHeight + 'px';
+                heart.style.animationDelay = Math.random() * 4 + 's';
+                heart.style.fontSize = (Math.random() * 15 + 10) + 'px';
+                document.body.appendChild(heart);
+                heartParticles.push(heart);
+            }
+        }
+
+        function createFloatingText() {
+            const romanticTexts = [
+                'I love you',
+                'Cinta sejati',
+                'Always yours',
+                'My heart is yours',
+                'Forever together',
+                'Sayang',
+                'Love forever',
+                'You are my everything',
+                'Tiada duanya',
+                'Hanya untukmu'
+            ];
+
+            for (let i = 0; i < 8; i++) {
+                const text = document.createElement('div');
+                text.textContent = romanticTexts[i % romanticTexts.length];
+                text.className = 'floating-text';
+                text.style.left = Math.random() * (window.innerWidth - 100) + 'px';
+                text.style.top = Math.random() * (window.innerHeight - 100) + 'px';
+                text.style.animationDelay = Math.random() * 6 + 's';
+                text.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                document.body.appendChild(text);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update controls
+            controls.update();
+
+            // Gentle rotation animation for the text
+            if (textMesh) {
+                textMesh.rotation.y += 0.002;
+                
+                // Gentle floating animation
+                textMesh.position.y = Math.sin(Date.now() * 0.001) * 2;
+                
+                // Subtle color pulsing
+                const time = Date.now() * 0.002;
+                const intensity = (Math.sin(time) + 1) * 0.5;
+                textMesh.material.emissive.setRGB(
+                    intensity * 0.1,
+                    intensity * 0.05,
+                    intensity * 0.08
+                );
+            }
+
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Reposition heart particles
+            heartParticles.forEach(heart => {
+                if (Math.random() < 0.1) { // Only occasionally reposition
+                    heart.style.left = Math.random() * window.innerWidth + 'px';
+                    heart.style.top = Math.random() * window.innerHeight + 'px';
+                }
+            });
+        }
+
+        // Event listeners
+        window.addEventListener('resize', onWindowResize, false);
+
+        // Handle mobile touch events for better mobile experience
+        let touchStartX = 0, touchStartY = 0;
+        
+        renderer.domElement.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, false);
+
+        renderer.domElement.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, false);
+
+        // Initialize the scene
+        init();
+
+        // Add some interactive features
+        document.addEventListener('click', function() {
+            // Add sparkle effect on click
+            if (textMesh) {
+                textMesh.material.emissive.setRGB(0.3, 0.1, 0.2);
+                setTimeout(() => {
+                    textMesh.material.emissive.setRGB(0, 0, 0);
+                }, 200);
+            }
+        });
+
+        // Performance optimization for mobile
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Reduce quality for mobile devices
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        } else {
+            renderer.setPixelRatio(window.devicePixelRatio);
+        }
+    </script>
+</body>
+</html>
+```
